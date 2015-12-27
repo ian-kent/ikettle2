@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingBottom="@dimen/activity_vertical_margin"
+    android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    tools:context="uk.iankent.ikettle2.UseIKettle2">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:text="Host placeholder"
+        android:id="@+id/txtHost"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:text="Error placeholder"
+        android:id="@+id/txtError"
+        android:layout_below="@+id/txtHost"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:textColor="#ff0000"
+        android:visibility="gone" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:text="0"
+        android:id="@+id/txtTemp"
+        android:layout_below="@+id/txtHost"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="33dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:text="Status placeholder"
+        android:id="@+id/txtStatus"
+        android:layout_below="@+id/txtTemp"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="23dp" />
+
+    <EditText
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:inputType="number"
+        android:ems="10"
+        android:id="@+id/txtTargetTemp"
+        android:layout_below="@+id/txtStatus"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="32dp"
+        android:text="100"
+        android:numeric="integer"
+        android:textAlignment="center" />
+
+    <ToggleButton
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/btnStartStop"
+        android:layout_below="@+id/txtTargetTemp"
+        android:layout_centerHorizontal="true"
+        android:textOff="Start"
+        android:textOn="Stop"
+        android:checked="false" />
+
+</RelativeLayout>
