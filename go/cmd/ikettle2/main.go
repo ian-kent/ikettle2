@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"net"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/abiosoft/ishell"
 )
@@ -29,10 +31,15 @@ const (
 	kettleStatus          = 20
 	turnOffKettle         = 22
 	turnOnKettle          = 21
+	configureWifi         = 12
+	configureWifiSSID     = 5
+	configureWifiPassword = 7
+	listWifiNetworks      = 13
 
-	commandSentAck = 3
-	kettleOffBase  = 7
-	kettleOnBase   = 8
+	commandSentAck      = 3
+	kettleOffBase       = 7
+	kettleOnBase        = 8
+	wifiNetworkResponse = 14
 )
 
 func main() {
@@ -84,7 +91,7 @@ func main() {
 		}
 
 		var err error
-		remoteConn, err = net.Dial("tcp", settings.RemoteAddr+":2081")
+		remoteConn, err = net.DialTimeout("tcp", settings.RemoteAddr+":2081", time.Duration(5)*time.Second)
 
 		if err != nil {
 			remoteConn = nil
@@ -123,6 +130,18 @@ func main() {
 					}
 
 					shell.Println("DAC response:", buf)
+				case wifiNetworkResponse:
+					// SSID,-db}SSID,-db}
+					shell.Println("wifi response:", buf)
+					s := string(buf)
+					p := strings.Split(s, "}")
+					for _, wn := range p {
+						if len(wn) == 0 {
+							continue
+						}
+						p2 := strings.SplitN(wn, ",", 2)
+						shell.Println("=>", fmt.Sprintf("%s (%s dBm)", p2[0], p2[1]))
+					}
 				case kettleStatus:
 					if len(buf) != 6 {
 						shell.Println("invalid length for kettle status update")
@@ -208,11 +227,10 @@ func main() {
 		}
 
 		err := remoteConn.Close()
+		remoteConn = nil
 		if err != nil {
 			return "", err
 		}
-
-		remoteConn = nil
 
 		return "Disconnected from " + settings.RemoteAddr, nil
 	})
@@ -266,7 +284,82 @@ func main() {
 		return "switched off", nil
 	})
 
-	// 44 is setDac
+	shell.Register("cmd", func(args ...string) (string, error) {
+		if remoteConn == nil {
+			return "", errors.New("not connected")
+		}
+
+		var buf []byte
+		for _, v := range args {
+			i, e := strconv.Atoi(v)
+			if e != nil {
+				return "", fmt.Errorf("arg must be numeric byte value: %s", v)
+			}
+			buf = append(buf, byte(i))
+		}
+
+		if buf[len(buf)-1] != 126 {
+			buf = append(buf, byte(126))
+		}
+
+		_, err := remoteConn.Write(buf)
+		if err != nil {
+			return "", err
+		}
+
+		return fmt.Sprintf("command sent: %v", buf), nil
+	})
+
+	shell.Register("wifi", func(args ...string) (string, error) {
+		if remoteConn == nil {
+			return "", errors.New("not connected")
+		}
+
+		_, err := remoteConn.Write([]byte{listWifiNetworks, endMessage})
+		if err != nil {
+			return "", err
+		}
+
+		return "wifi network list requested", nil
+	})
+
+	shell.Register("setup", func(args ...string) (string, error) {
+		if remoteConn == nil {
+			return "", errors.New("not connected: switch to iKettle network, then `connect 192.168.4.1`")
+		}
+
+		shell.ShowPrompt(false)
+		defer shell.ShowPrompt(true)
+
+		shell.Print("Enter network SSID:")
+		ssid := shell.ReadLine()
+
+		shell.Print("Enter network password:")
+		passwd := shell.ReadPassword(true)
+
+		bSsid := []byte{configureWifiSSID}
+		bSsid = append(bSsid, []byte(ssid)...)
+		bSsid = append(bSsid, endMessage)
+		_, err := remoteConn.Write(bSsid)
+		if err != nil {
+			return "", fmt.Errorf("Error sending SSID command: %s", err)
+		}
+
+		bPasswd := []byte{configureWifiPassword}
+		bPasswd = append(bPasswd, []byte(passwd)...)
+		bPasswd = append(bPasswd, endMessage)
+		_, err = remoteConn.Write(bPasswd)
+		if err != nil {
+			return "", fmt.Errorf("Error sending password command: %s", err)
+		}
+
+		_, err = remoteConn.Write([]byte{configureWifi, endMessage})
+		if err != nil {
+			return "", fmt.Errorf("Error sending setup command: %s", err)
+		}
+
+		return "After ACK, switch to normal wifi network and `connect [kettle-ip]`", nil
+	})
 
 	// start shell
 	shell.Start()
