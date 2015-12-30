@@ -1,18 +1,24 @@
 package uk.iankent.ikettle2;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.TextView;
+import android.widget.Toast;
 import android.widget.ToggleButton;
 
 import java.io.IOException;
 
 import uk.iankent.ikettle2.client.IKettle2Client;
 import uk.iankent.ikettle2.client.KettleCommandAckResponse;
+import uk.iankent.ikettle2.client.KettleError;
+import uk.iankent.ikettle2.client.KettleResponse;
 import uk.iankent.ikettle2.client.KettleStatusResponse;
 import uk.iankent.ikettle2.client.OnKettleResponse;
 import uk.iankent.ikettle2.data.Kettle;
@@ -38,6 +44,7 @@ public class UseIKettle2 extends AppCompatActivity {
 
         final TextView txtTemp = (TextView)findViewById(R.id.txtTemp);
         final TextView txtStatus = (TextView)findViewById(R.id.txtStatus);
+        final TextView txtWaterlevel = (TextView)findViewById(R.id.txtWaterlevel);
 
         final TextView txtTargetTemp = (TextView)findViewById(R.id.txtTargetTemp);
         final ToggleButton btnStartStop = (ToggleButton)findViewById(R.id.btnStartStop);
@@ -56,61 +63,72 @@ public class UseIKettle2 extends AppCompatActivity {
             }
         });
 
-        txtHost.setText(kettle.Host);
-
-        new Thread(new Runnable() {
-            public void run() {
-                try{
-                    client.Connect();
-                    client.onKettleStatus = new OnKettleResponse<KettleStatusResponse>() {
-                        @Override
-                        public void onKettleResponse(final KettleStatusResponse response) {
-                            activity.runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    switch(response.getStatus()) {
-                                        case Ready:
-                                            if(btnStartStop.isChecked()) {
-                                                btnStartStop.setEnabled(true);
-                                                btnStartStop.setChecked(false);
-                                            }
-                                            break;
-                                    }
-                                    txtTemp.setText(((Integer)response.getTemperature()).toString() + (char)0x00B0);
-                                    txtStatus.setText(response.getStatus().name());
-                                }
-                            });
-                        }
-                    };
-                    client.onKettleCommandAck = new OnKettleResponse<KettleCommandAckResponse>() {
-                        @Override
-                        public void onKettleResponse(KettleCommandAckResponse response) {
-                            activity.runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    btnStartStop.setEnabled(true);
-                                }
-                            });
-                        }
-                    };
-                    activity.runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            txtError.setVisibility(View.GONE);
-                        }
-                    });
-                    client.Process();
-                } catch (IOException e) {
-                    final IOException ex = e;
-                    activity.runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            txtError.setText(ex.getMessage());
-                            txtError.setVisibility(View.VISIBLE);
-                        }
-                    });
-                }
+        client.onError = new OnKettleResponse<KettleError>() {
+            @Override
+            public void onKettleResponse(final KettleError response) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        txtError.setText(response.getException().getMessage());
+                        txtError.setVisibility(View.VISIBLE);
+                    }
+                });
             }
-        }).start();
+        };
+        client.onKettleStatus = new OnKettleResponse<KettleStatusResponse>() {
+            @Override
+            public void onKettleResponse(final KettleStatusResponse response) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        switch(response.getStatus()) {
+                            case Ready:
+                                if(btnStartStop.isChecked()) {
+                                    btnStartStop.setEnabled(true);
+                                    btnStartStop.setChecked(false);
+                                }
+                                break;
+                        }
+                        txtTemp.setText(((Integer)response.getTemperature()).toString() + (char)0x00B0);
+                        txtStatus.setText(response.getStatus().name());
+                        txtWaterlevel.setText(response.getWaterLevelStatus().name());
+                    }
+                });
+            }
+        };
+        client.onKettleCommandAck = new OnKettleResponse<KettleCommandAckResponse>() {
+            @Override
+            public void onKettleResponse(KettleCommandAckResponse response) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        btnStartStop.setEnabled(true);
+                    }
+                });
+            }
+        };
+
+        txtHost.setText(kettle.Host);
+        txtError.setVisibility(View.GONE);
+        client.Connect();
+        client.onConnected = new OnKettleResponse() {
+            @Override
+            public void onKettleResponse(KettleResponse response) {
+                client.Process();
+            }
+        };
+        client.onDisconnected = new OnKettleResponse() {
+            @Override
+            public void onKettleResponse(KettleResponse response) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        txtError.setVisibility(View.VISIBLE);
+                        txtError.setText("Disconnected");
+                        // TODO retry
+                    }
+                });
+            }
+        };
     }
 }

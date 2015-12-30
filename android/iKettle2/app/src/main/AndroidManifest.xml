@@ -22,7 +22,9 @@
             </intent-filter>
         </activity>
         <activity android:name=".AddIKettle2" />
-        <activity android:name=".UseIKettle2"></activity>
+        <activity android:name=".UseIKettle2" />
+        <activity android:name=".ChooseNewExistingKettle" />
+        <activity android:name=".ConfigureIKettle2"></activity>
     </application>
 
 </manifest>

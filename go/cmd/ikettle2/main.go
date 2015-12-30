@@ -35,11 +35,17 @@ const (
 	configureWifiSSID     = 5
 	configureWifiPassword = 7
 	listWifiNetworks      = 13
+	deviceInfo            = 100
+	firmwareUpdate        = 109
 
 	commandSentAck      = 3
 	kettleOffBase       = 7
 	kettleOnBase        = 8
 	wifiNetworkResponse = 14
+	deviceInfoResponse  = 101
+
+	deviceKettle = 1
+	deviceCoffee = 2
 )
 
 func main() {
@@ -123,13 +129,16 @@ func main() {
 				switch buf[0] {
 				case commandSentAck:
 					shell.Println("OK!")
+					buf = []byte{}
 				case autoDacKettleResponse:
 					if len(buf) != 3 {
 						shell.Println("invalid length for kettle dac response")
+						buf = []byte{}
 						continue
 					}
 
 					shell.Println("DAC response:", buf)
+					buf = []byte{}
 				case wifiNetworkResponse:
 					// SSID,-db}SSID,-db}
 					shell.Println("wifi response:", buf)
@@ -137,14 +146,39 @@ func main() {
 					p := strings.Split(s, "}")
 					for _, wn := range p {
 						if len(wn) == 0 {
+							buf = []byte{}
 							continue
 						}
 						p2 := strings.SplitN(wn, ",", 2)
 						shell.Println("=>", fmt.Sprintf("%s (%s dBm)", p2[0], p2[1]))
 					}
+					buf = []byte{}
+				case deviceInfoResponse:
+					if len(buf) != 3 {
+						shell.Println("invalid length for device info response")
+						buf = []byte{}
+						continue
+					}
+					deviceType := int(buf[1])
+					deviceSDK := int(buf[2])
+					var deviceName string
+					switch deviceType {
+					case deviceKettle:
+						deviceName = "iKettle 2.0"
+					case deviceCoffee:
+						deviceName = "Coffee"
+					default:
+						deviceName = "Unknown"
+					}
+					shell.Println("Device info:")
+					shell.Println("=>", fmt.Sprintf("Type = %s [%d]", deviceName, deviceType))
+					shell.Println("=>", fmt.Sprintf("SDK = %d", deviceSDK))
+					buf = []byte{}
 				case kettleStatus:
 					if len(buf) != 6 {
-						shell.Println("invalid length for kettle status update")
+						shell.Println("invalid length for kettle status update:", buf)
+						shell.Println("`" + string(buf) + "`")
+						buf = []byte{}
 						continue
 					}
 
@@ -210,11 +244,12 @@ func main() {
 						pendingDAC = false
 						shell.Println("Wait for DAC response")
 					}
+					buf = []byte{}
 				default:
 					shell.Println("Got command:", buf)
+					shell.Println("ASCII: `" + string(buf) + "`")
+					buf = []byte{}
 				}
-
-				buf = []byte{}
 			}
 		}()
 
@@ -323,6 +358,19 @@ func main() {
 		return "wifi network list requested", nil
 	})
 
+	shell.Register("info", func(args ...string) (string, error) {
+		if remoteConn == nil {
+			return "", errors.New("not connected")
+		}
+
+		_, err := remoteConn.Write([]byte{deviceInfo, endMessage})
+		if err != nil {
+			return "", err
+		}
+
+		return "wifi network list requested", nil
+	})
+
 	shell.Register("setup", func(args ...string) (string, error) {
 		if remoteConn == nil {
 			return "", errors.New("not connected: switch to iKettle network, then `connect 192.168.4.1`")
@@ -340,6 +388,7 @@ func main() {
 		bSsid := []byte{configureWifiSSID}
 		bSsid = append(bSsid, []byte(ssid)...)
 		bSsid = append(bSsid, endMessage)
+		shell.Println(fmt.Sprintf("Bytes: %v", bSsid))
 		_, err := remoteConn.Write(bSsid)
 		if err != nil {
 			return "", fmt.Errorf("Error sending SSID command: %s", err)
@@ -349,11 +398,14 @@ func main() {
 		bPasswd = append(bPasswd, []byte(passwd)...)
 		bPasswd = append(bPasswd, endMessage)
 		_, err = remoteConn.Write(bPasswd)
+		shell.Println(fmt.Sprintf("Bytes: %v", bPasswd))
 		if err != nil {
 			return "", fmt.Errorf("Error sending password command: %s", err)
 		}
 
-		_, err = remoteConn.Write([]byte{configureWifi, endMessage})
+		bEnd := []byte{configureWifi, endMessage}
+		shell.Println(fmt.Sprintf("Bytes: %v", bEnd))
+		_, err = remoteConn.Write(bEnd)
 		if err != nil {
 			return "", fmt.Errorf("Error sending setup command: %s", err)
 		}

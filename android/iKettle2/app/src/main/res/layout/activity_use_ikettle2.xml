@@ -57,12 +57,11 @@
         android:inputType="number"
         android:ems="10"
         android:id="@+id/txtTargetTemp"
-        android:layout_below="@+id/txtStatus"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="32dp"
         android:text="100"
         android:numeric="integer"
-        android:textAlignment="center" />
+        android:textAlignment="center"
+        android:layout_centerVertical="true"
+        android:layout_centerHorizontal="true" />
 
     <ToggleButton
         android:layout_width="wrap_content"
@@ -73,5 +72,15 @@
         android:textOff="Start"
         android:textOn="Stop"
         android:checked="false" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:text="Water level placeholder"
+        android:id="@+id/txtWaterlevel"
+        android:layout_below="@+id/txtStatus"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="33dp" />
 
 </RelativeLayout>

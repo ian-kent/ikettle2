@@ -9,10 +9,18 @@ import android.os.Parcelable;
 public class Kettle implements Parcelable {
     public String Host;
     public Integer Port;
+    public Integer OffBaseWeight;
+    public String Name;
 
     public Kettle(String host, Integer port) {
         this.Host = host;
         this.Port = port;
+        this.OffBaseWeight = 0;
+        this.Name = "iKettle 2.0";
+        if(OffBaseWeight == null || OffBaseWeight == 0) {
+            // Set a (hopefully sensible) default
+            OffBaseWeight = 2013;
+        }
     }
 
     /* everything below here is for implementing Parcelable */
@@ -28,6 +36,10 @@ public class Kettle implements Parcelable {
     public void writeToParcel(Parcel out, int flags) {
         out.writeString(Host);
         out.writeInt(Port);
+        if(OffBaseWeight == null) OffBaseWeight = 2013;
+        out.writeInt(OffBaseWeight);
+        if(Name == null) Name = "iKettle 2.0";
+        out.writeString(Name);
     }
 
     // this is used to regenerate your object. All Parcelables must have a CREATOR that implements these two methods
@@ -45,5 +57,14 @@ public class Kettle implements Parcelable {
     private Kettle(Parcel in) {
         Host = in.readString();
         Port = in.readInt();
+        OffBaseWeight = in.readInt();
+        if(OffBaseWeight == null || OffBaseWeight == 0) {
+            // Set a (hopefully sensible) default
+            OffBaseWeight = 2013;
+        }
+        Name = in.readString();
+        if(Name.length() == 0) {
+            Name = "iKettle 2.0";
+        }
     }
 }

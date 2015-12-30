@@ -14,8 +14,18 @@ public class KettleStatusResponse implements KettleResponse {
         Cooling
     }
 
+    public enum WaterLevelState {
+        Empty,
+        Low,
+        Half,
+        Full,
+        Overfilled
+    }
+
     protected State status;
     protected int temperature;
+    protected int waterLevel;
+    protected WaterLevelState waterLevelStatus;
 
     public static KettleStatusResponse fromBytes(byte[] b) {
         KettleStatusResponse ksr = new KettleStatusResponse();
@@ -41,6 +51,19 @@ public class KettleStatusResponse implements KettleResponse {
         ksr.temperature = (int)b[1];
 
         // b[2] + b[3] = waterlevel
+        ksr.waterLevel = (b[2] << 8) + b[3];
+        if (ksr.waterLevel < 130) {
+            ksr.waterLevelStatus = WaterLevelState.Empty;
+        } else if (ksr.waterLevel < 163) {
+            ksr.waterLevelStatus = WaterLevelState.Low;
+        } else if (ksr.waterLevel < 203) {
+            ksr.waterLevelStatus = WaterLevelState.Half;
+        } else if (ksr.waterLevel < 270) {
+            ksr.waterLevelStatus = WaterLevelState.Full;
+        } else {
+            ksr.waterLevelStatus = WaterLevelState.Overfilled;
+        }
+
         // b[4] unknown?
         Log.d("KettleStatusResponse", b.toString());
 
@@ -50,6 +73,10 @@ public class KettleStatusResponse implements KettleResponse {
     public State getStatus() {
         return status;
     }
+
+    public WaterLevelState getWaterLevelStatus() { return waterLevelStatus; }
+
+    public int getWaterLevel() { return waterLevel; }
 
     public int getTemperature() {
         return temperature;

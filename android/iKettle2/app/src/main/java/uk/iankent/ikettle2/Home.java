@@ -8,6 +8,7 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -15,6 +16,9 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 import uk.iankent.ikettle2.data.Kettle;
 import uk.iankent.ikettle2.data.KettleAdapter;
@@ -48,7 +52,7 @@ public class Home extends AppCompatActivity {
         b.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent i = new Intent(ctx, AddIKettle2.class);
+                Intent i = new Intent(ctx, ChooseNewExistingKettle.class);
                 startActivityForResult(i, 1);
             }
         });
