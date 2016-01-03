@@ -26,11 +26,16 @@ public class IKettle2Client {
     static final byte configureWifi         = 12;
     static final byte configureWifiSSID     = 5;
     static final byte configureWifiPassword = 7;
+    static final byte getDeviceInfo         = 100;
+    static final byte startFirmwareUpdate   = 109;
 
     static final byte commandSentAck      = 3;
     static final byte kettleOffBase       = 7;
     static final byte kettleOnBase        = 8;
     static final byte wifiNetworkResponse = 14;
+    static final byte deviceInfoResponse  = 101;
+
+    protected KettleStatusResponse lastStatus;
 
     protected String host;
     protected Integer port;
@@ -39,6 +44,7 @@ public class IKettle2Client {
     public OnKettleResponse<KettleStatusResponse> onKettleStatus;
     public OnKettleResponse<KettleCommandAckResponse> onKettleCommandAck;
     public OnKettleResponse<KettleWifiNetworksResponse> onKettleWifiNetworksResponse;
+    public OnKettleResponse<KettleDeviceInfoResponse> onKettleDeviceInfoResponse;
     public OnKettleResponse onConnected;
     public OnKettleResponse onDisconnected;
     public OnKettleResponse<KettleError> onError;
@@ -68,6 +74,10 @@ public class IKettle2Client {
     }
 
     public void Connect() {
+        Connect(5000);
+    }
+
+    public void Connect(final int timeout) {
         new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... params) {
@@ -76,7 +86,7 @@ public class IKettle2Client {
                     clientSocket.setKeepAlive(true);
                     clientSocket.setTcpNoDelay(true);
                     clientSocket.setSoLinger(true, 0);
-                    clientSocket.connect(new InetSocketAddress(IKettle2Client.this.host, IKettle2Client.this.port), 5000);
+                    clientSocket.connect(new InetSocketAddress(IKettle2Client.this.host, IKettle2Client.this.port), timeout);
                     if(IKettle2Client.this.onConnected != null) {
                         IKettle2Client.this.onConnected.onKettleResponse(null);
                     }
@@ -133,7 +143,9 @@ public class IKettle2Client {
                                 switch (cmd[0]) {
                                     case kettleStatus:
                                         if (this$.onKettleStatus != null) {
-                                            this$.onKettleStatus.onKettleResponse(KettleStatusResponse.fromBytes(args));
+                                            KettleStatusResponse res = KettleStatusResponse.fromBytes(args);
+                                            this$.lastStatus = res;
+                                            this$.onKettleStatus.onKettleResponse(res);
                                         }
                                         break;
                                     case commandSentAck:
@@ -146,6 +158,10 @@ public class IKettle2Client {
                                             this$.onKettleWifiNetworksResponse.onKettleResponse(KettleWifiNetworksResponse.fromBytes(args));
                                         }
                                         break;
+                                    case deviceInfoResponse:
+                                        if (this$.onKettleDeviceInfoResponse != null) {
+                                            this$.onKettleDeviceInfoResponse.onKettleResponse(KettleDeviceInfoResponse.fromBytes(args));
+                                        }
                                     default:
                                         // FIXME invalid command
                                         break;
@@ -189,6 +205,14 @@ public class IKettle2Client {
         }
     }
 
+    public void GetDeviceInfo() {
+        try {
+            clientSocket.getOutputStream().write(new byte[]{getDeviceInfo, endMessage});
+        } catch (IOException e) {
+            this.handleError(new KettleGetDeviceInfoError(e));
+        }
+    }
+
     public void SetWifiPassword(String password) {
         try {
             byte[] b = password.getBytes(Charset.forName("ASCII"));
@@ -217,5 +241,12 @@ public class IKettle2Client {
 
     public void Disconnect() throws IOException {
         clientSocket.close();
+    }
+
+    public KettleStatusResponse getLastStatus() {
+        if(lastStatus == null) {
+            return new KettleStatusResponse();
+        }
+        return lastStatus;
     }
 }

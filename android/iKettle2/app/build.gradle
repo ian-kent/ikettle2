@@ -19,10 +19,18 @@ android {
     }
 }
 
+repositories {
+    maven {
+        url "https://jitpack.io"
+    }
+}
+
 dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
     testCompile 'junit:junit:4.12'
     compile 'com.android.support:appcompat-v7:23.1.1'
     compile 'com.android.support:design:23.1.1'
     compile 'com.google.code.gson:gson:2.5'
+    compile 'commons-net:commons-net:3.3'
+    compile 'com.github.Triggertrap:SeekArc:v1.1'
 }

@@ -13,7 +13,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceMedium"
-        android:text="Host/IP"
+        android:text="Enter host/IP or wait for scan"
         android:id="@+id/textHostIP"
         android:layout_alignParentTop="true"
         android:layout_alignParentLeft="true"
@@ -27,8 +27,7 @@
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true"
         android:layout_alignParentRight="true"
-        android:layout_alignParentEnd="true"
-        android:text="192.168.100.171" />
+        android:layout_alignParentEnd="true" />
 
     <Button
         android:layout_width="wrap_content"
@@ -50,5 +49,37 @@
         android:layout_alignParentStart="true"
         android:textColor="#ff0000"
         android:visibility="gone" />
+
+    <ListView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/listViewDevices"
+        android:layout_below="@+id/btnSave"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_marginTop="34dp"
+        android:choiceMode="singleChoice" />
+
+    <ProgressBar
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:id="@+id/progressScanning"
+        android:indeterminate="true"
+        android:visibility="invisible"
+        android:layout_alignBottom="@+id/txtScanning"
+        android:layout_alignRight="@+id/inputHostIP"
+        android:layout_alignEnd="@+id/inputHostIP" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="Scanning"
+        android:id="@+id/txtScanning"
+        android:layout_alignBaseline="@+id/btnSave"
+        android:layout_alignBottom="@+id/btnSave"
+        android:layout_toLeftOf="@+id/progressScanning"
+        android:layout_toStartOf="@+id/progressScanning"
+        android:paddingRight="8dp" />
 
 </RelativeLayout>

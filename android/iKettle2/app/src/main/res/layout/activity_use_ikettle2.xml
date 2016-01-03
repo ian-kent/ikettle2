@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:seekarc="http://schemas.android.com/apk/res-auto"
     android:paddingBottom="@dimen/activity_vertical_margin"
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
@@ -13,11 +14,12 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceLarge"
-        android:text="Host placeholder"
-        android:id="@+id/txtHost"
+        android:text="iKettle 2.0"
+        android:id="@+id/txtName"
+        android:textAlignment="center"
+        android:textSize="30dp"
         android:layout_alignParentTop="true"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true" />
+        android:layout_centerHorizontal="true" />
 
     <TextView
         android:layout_width="wrap_content"
@@ -25,34 +27,48 @@
         android:textAppearance="?android:attr/textAppearanceMedium"
         android:text="Error placeholder"
         android:id="@+id/txtError"
-        android:layout_below="@+id/txtHost"
+        android:layout_below="@+id/txtName"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true"
         android:textColor="#ff0000"
         android:visibility="gone" />
 
+    <com.triggertrap.seekarc.SeekArc
+        android:id="@+id/seekArc"
+        android:layout_width="220dp"
+        android:layout_height="220dp"
+        android:layout_gravity="center"
+        android:padding="10dp"
+        seekarc:rotation="0"
+        seekarc:startAngle="55"
+        seekarc:sweepAngle="250"
+        seekarc:touchInside="true"
+        android:layout_below="@+id/txtName"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="22dp" />
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceLarge"
-        android:text="0"
         android:id="@+id/txtTemp"
-        android:layout_below="@+id/txtHost"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="33dp" />
+        android:textSize="40dp"
+        android:layout_above="@+id/txtStatus"
+        android:layout_centerHorizontal="true" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceMedium"
-        android:text="Status placeholder"
+        android:text="Disconnected"
         android:id="@+id/txtStatus"
-        android:layout_below="@+id/txtTemp"
+        android:layout_marginBottom="46dp"
+        android:layout_above="@+id/txtWaterlevel"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="23dp" />
+        android:textSize="30dp" />
 
     <EditText
-        android:layout_width="wrap_content"
+        android:layout_width="120dp"
         android:layout_height="wrap_content"
         android:inputType="number"
         android:ems="10"
@@ -60,27 +76,28 @@
         android:text="100"
         android:numeric="integer"
         android:textAlignment="center"
-        android:layout_centerVertical="true"
+        android:layout_marginTop="63dp"
+        android:textSize="40dp"
+        android:layout_alignTop="@+id/seekArc"
         android:layout_centerHorizontal="true" />
 
     <ToggleButton
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:id="@+id/btnStartStop"
-        android:layout_below="@+id/txtTargetTemp"
-        android:layout_centerHorizontal="true"
         android:textOff="Start"
         android:textOn="Stop"
-        android:checked="false" />
+        android:checked="false"
+        android:layout_below="@+id/txtTargetTemp"
+        android:layout_centerHorizontal="true" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceMedium"
-        android:text="Water level placeholder"
+        android:text="Empty"
         android:id="@+id/txtWaterlevel"
-        android:layout_below="@+id/txtStatus"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="33dp" />
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true" />
 
 </RelativeLayout>
