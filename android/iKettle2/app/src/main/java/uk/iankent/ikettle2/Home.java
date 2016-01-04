@@ -37,11 +37,9 @@ public class Home extends AppCompatActivity {
         final Context ctx = this;
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
-        //Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        //setSupportActionBar(toolbar);
 
-        Button b = (Button) findViewById(R.id.btnAddIKettle);
-        b.setOnClickListener(new View.OnClickListener() {
+        FloatingActionButton fab = (FloatingActionButton)findViewById(R.id.fab);
+        fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent i = new Intent(ctx, ChooseNewExistingKettle.class);
