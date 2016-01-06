@@ -16,6 +16,15 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+        alpha {
+            debuggable false
+            jniDebuggable false
+            renderscriptDebuggable false
+            minifyEnabled true
+            pseudoLocalesEnabled false
+            versionNameSuffix 'alpha'
+            zipAlignEnabled true
+        }
     }
 }
 

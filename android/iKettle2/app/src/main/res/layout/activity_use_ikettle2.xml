@@ -72,7 +72,6 @@
                     seekarc:startAngle="55"
                     seekarc:sweepAngle="250"
                     seekarc:touchInside="true"
-                    android:layout_below="@+id/txtName"
                     android:layout_centerHorizontal="true"
                     android:layout_marginTop="22dp" />
             </RelativeLayout>
