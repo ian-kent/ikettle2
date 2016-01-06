@@ -5,12 +5,16 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.View;
 import android.widget.CompoundButton;
 import android.widget.TextView;
 import android.widget.ToggleButton;
 
 import com.triggertrap.seekarc.SeekArc;
+
+import java.io.IOException;
 
 import uk.iankent.ikettle2.client.IKettle2Client;
 import uk.iankent.ikettle2.client.KettleCommandAckResponse;
@@ -74,6 +78,37 @@ public class UseIKettle2 extends AppCompatActivity {
         });
         mSeekArc.setProgress(Integer.valueOf(txtTargetTemp.getText().toString()));
 
+        txtTargetTemp.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                int i = 0;
+                try {
+                    i = Integer.valueOf(s.toString());
+                } catch (RuntimeException e) {} // do nothing
+
+                if(i == 0 && s.length() > 1) {
+                    s.clear();
+                    s.append("0");
+                } else if(i < 0) {
+                    s.clear();
+                    s.append("0");
+                } else if (i > 100) {
+                    s.clear();
+                    s.append("100");
+                }
+            }
+        });
+
         btnStartStopCheckedChangeListener = new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
@@ -120,7 +155,9 @@ public class UseIKettle2 extends AppCompatActivity {
                                 break;
                         }
                         if(response.getTemperature() == 127) {
-                            txtTemp.setText("Kettle off base");
+                            txtStatus.setText("Kettle off base");
+                            txtTemp.setText("?");
+                            txtWaterlevel.setText("Unknown");
                         } else {
                             int t = response.getTemperature();
 
@@ -132,12 +169,14 @@ public class UseIKettle2 extends AppCompatActivity {
                                 c = t - (t/100*40);
                             }
 
-                            txtTemp.setText(((Integer)t).toString() + (char) 0x00B0);
+                            // FIXME mid-range colour (~70deg) is a horrible purple
+                            txtTemp.setText(((Integer)t).toString());// + (char) 0x00B0);
                             int r = Color.rgb((255*c)/100, 0, (255*(100-c))/100);
                             txtTemp.setTextColor(r);
+
+                            txtStatus.setText(response.getStatus().name());
+                            txtWaterlevel.setText(response.getWaterLevelStatus().name());
                         }
-                        txtStatus.setText(response.getStatus().name());
-                        txtWaterlevel.setText(response.getWaterLevelStatus().name());
 
                         updateUIStatus();
                     }
@@ -202,5 +241,15 @@ public class UseIKettle2 extends AppCompatActivity {
         } else {
             mSeekArc.setEnabled(true);
         }
+    }
+
+    @Override
+    public void onBackPressed() {
+        try {
+            client.Disconnect();
+        } catch (IOException e) {
+            // do nothing
+        }
+        super.onBackPressed();
     }
 }

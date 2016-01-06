@@ -50,8 +50,11 @@ public class KettleStatusResponse implements KettleResponse {
 
         ksr.temperature = (int)b[1];
 
-        // b[2] + b[3] = waterlevel
-        ksr.waterLevel = (b[2] << 8) + b[3];
+        if(b.length > 3) {
+            // b[2] + b[3] = waterlevel
+            ksr.waterLevel = (b[2] << 8) + b[3];
+        }
+
         if (ksr.waterLevel < 130) {
             ksr.waterLevelStatus = WaterLevelState.Empty;
         } else if (ksr.waterLevel < 163) {
