@@ -25,9 +25,9 @@
         android:textAppearance="?android:attr/textAppearanceLarge"
         android:text="Your Smarter devices"
         android:id="@+id/textView4"
+        android:paddingBottom="10dp"
         android:layout_alignParentTop="true"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true"
-        android:paddingBottom="10dp" />
+        android:layout_centerHorizontal="true"
+        android:textSize="25dp" />
 
 </RelativeLayout>

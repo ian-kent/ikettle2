@@ -34,6 +34,11 @@ public class Home extends AppCompatActivity {
         Kettles.Load(this);
         adapter = new KettleAdapter(this, Kettles.Get());
 
+        if(Kettles.Get().size() == 0) {
+            Intent i = new Intent(this, ChooseNewExistingKettle.class);
+            startActivityForResult(i, 2);
+        }
+
         final Context ctx = this;
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
@@ -65,6 +70,10 @@ public class Home extends AppCompatActivity {
         if (requestCode == 1) {
             adapter.notifyDataSetChanged();
             Kettles.Save(this);
+        } else if (requestCode == 2) {
+            if(Kettles.Get().size() == 0) {
+                finish();
+            }
         }
     }
 }
