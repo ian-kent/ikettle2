@@ -37,6 +37,9 @@ public class IKettle2Client {
 
     protected KettleStatusResponse lastStatus;
 
+    protected boolean autoDacPending = false;
+    protected int autoDacOffBaseWeight = 0;
+
     protected String host;
     protected Integer port;
 
@@ -45,6 +48,7 @@ public class IKettle2Client {
     public OnKettleResponse<KettleCommandAckResponse> onKettleCommandAck;
     public OnKettleResponse<KettleWifiNetworksResponse> onKettleWifiNetworksResponse;
     public OnKettleResponse<KettleDeviceInfoResponse> onKettleDeviceInfoResponse;
+    public OnKettleResponse<KettleAutoDacResponse> onKettleAutoDacResponse;
     public OnKettleResponse onConnected;
     public OnKettleResponse onDisconnected;
     public OnKettleResponse<KettleError> onError;
@@ -145,6 +149,12 @@ public class IKettle2Client {
                                         if (this$.onKettleStatus != null) {
                                             KettleStatusResponse res = KettleStatusResponse.fromBytes(args);
                                             this$.lastStatus = res;
+                                            if(autoDacPending) {
+                                                autoDacPending = false;
+                                                autoDacOffBaseWeight = res.getWaterLevel();
+                                                completeCalibrate();
+                                                break;
+                                            }
                                             this$.onKettleStatus.onKettleResponse(res);
                                         }
                                         break;
@@ -162,6 +172,13 @@ public class IKettle2Client {
                                         if (this$.onKettleDeviceInfoResponse != null) {
                                             this$.onKettleDeviceInfoResponse.onKettleResponse(KettleDeviceInfoResponse.fromBytes(args));
                                         }
+                                        break;
+                                    case autoDacKettleResponse:
+                                        Log.d("IKettle2Client", "Process: got autoDacKettleResponse");
+                                        if (this$.onKettleAutoDacResponse != null) {
+                                            this$.onKettleAutoDacResponse.onKettleResponse(new KettleAutoDacResponse(autoDacOffBaseWeight));
+                                        }
+                                        break;
                                     default:
                                         // FIXME invalid command
                                         break;
@@ -248,5 +265,19 @@ public class IKettle2Client {
             return new KettleStatusResponse();
         }
         return lastStatus;
+    }
+
+    public void Calibrate() {
+        Log.d("IKettle2Client", "Calibrate: setting autoDacPending");
+        autoDacPending = true;
+    }
+
+    protected void completeCalibrate() {
+        Log.d("IKettle2Client", "completeCalibrate: sending autoDacKettle command");
+        try {
+            clientSocket.getOutputStream().write(new byte[]{autoDacKettle, endMessage});
+        } catch (IOException e) {
+            this.handleError(new KettleCalibrateError(e));
+        }
     }
 }

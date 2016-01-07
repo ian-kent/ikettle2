@@ -2,6 +2,8 @@ package uk.iankent.ikettle2.client;
 
 import android.util.Log;
 
+import java.util.Arrays;
+
 /**
  * Created by iankent on 27/12/2015.
  */
@@ -68,7 +70,7 @@ public class KettleStatusResponse implements KettleResponse {
         }
 
         // b[4] unknown?
-        Log.d("KettleStatusResponse", b.toString());
+        Log.d("KettleStatusResponse", Arrays.toString(b));
 
         return ksr;
     }

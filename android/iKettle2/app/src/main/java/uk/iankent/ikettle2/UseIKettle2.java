@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
+import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.TextView;
 import android.widget.ToggleButton;
@@ -53,6 +54,17 @@ public class UseIKettle2 extends AppCompatActivity {
         final TextView txtTemp = (TextView)findViewById(R.id.txtTemp);
         final TextView txtStatus = (TextView)findViewById(R.id.txtStatus);
         final TextView txtWaterlevel = (TextView)findViewById(R.id.txtWaterlevel);
+
+        final Button btnCalibrate = (Button)findViewById(R.id.btnCalibrate);
+        btnCalibrate.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                CalibrateIKettle.client = client;
+                CalibrateIKettle.kettle = kettle;
+                Intent i = new Intent(UseIKettle2.this, CalibrateIKettle.class);
+                startActivity(i);
+            }
+        });
 
         final TextView txtTargetTemp = (TextView)findViewById(R.id.txtTargetTemp);
         btnStartStop = (ToggleButton)findViewById(R.id.btnStartStop);

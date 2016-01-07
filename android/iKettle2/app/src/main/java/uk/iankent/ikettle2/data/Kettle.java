@@ -17,10 +17,7 @@ public class Kettle implements Parcelable {
         this.Port = port;
         this.OffBaseWeight = 0;
         this.Name = "iKettle 2.0";
-        if(OffBaseWeight == null || OffBaseWeight == 0) {
-            // Set a (hopefully sensible) default
-            OffBaseWeight = 2013;
-        }
+        this.OffBaseWeight = 0;
     }
 
     /* everything below here is for implementing Parcelable */
@@ -36,7 +33,7 @@ public class Kettle implements Parcelable {
     public void writeToParcel(Parcel out, int flags) {
         out.writeString(Host);
         out.writeInt(Port);
-        if(OffBaseWeight == null) OffBaseWeight = 2013;
+        if(OffBaseWeight == null) OffBaseWeight = 0;
         out.writeInt(OffBaseWeight);
         if(Name == null) Name = "iKettle 2.0";
         out.writeString(Name);
@@ -58,10 +55,7 @@ public class Kettle implements Parcelable {
         Host = in.readString();
         Port = in.readInt();
         OffBaseWeight = in.readInt();
-        if(OffBaseWeight == null || OffBaseWeight == 0) {
-            // Set a (hopefully sensible) default
-            OffBaseWeight = 2013;
-        }
+        if(OffBaseWeight == null) OffBaseWeight = 0;
         Name = in.readString();
         if(Name.length() == 0) {
             Name = "iKettle 2.0";
