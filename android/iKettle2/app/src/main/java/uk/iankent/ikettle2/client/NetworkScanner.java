@@ -16,12 +16,6 @@ import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import uk.iankent.ikettle2.AddIKettle2;
-import uk.iankent.ikettle2.client.IKettle2Client;
-import uk.iankent.ikettle2.client.KettleError;
-import uk.iankent.ikettle2.client.KettleResponse;
-import uk.iankent.ikettle2.client.OnKettleResponse;
-
 /**
  * Created by iankent on 02/01/2016.
  */
