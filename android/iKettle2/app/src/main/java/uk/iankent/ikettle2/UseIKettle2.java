@@ -210,11 +210,18 @@ public class UseIKettle2 extends AppCompatActivity {
 
         txtName.setText(kettle.Name);
         txtError.setVisibility(View.GONE);
-        client.Connect();
+
         client.onConnected = new OnKettleResponse() {
             @Override
             public void onKettleResponse(KettleResponse response) {
                 client.Process();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        txtError.setVisibility(View.GONE);
+                        // TODO retry
+                    }
+                });
             }
         };
         client.onDisconnected = new OnKettleResponse() {
@@ -225,6 +232,7 @@ public class UseIKettle2 extends AppCompatActivity {
                     public void run() {
                         txtError.setVisibility(View.VISIBLE);
                         txtError.setText("Disconnected");
+                        txtStatus.setText("Disconnected");
                         // TODO retry
                     }
                 });
@@ -263,5 +271,21 @@ public class UseIKettle2 extends AppCompatActivity {
             // do nothing
         }
         super.onBackPressed();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        try {
+            client.Disconnect();
+        } catch (IOException e) {
+            // do nothing
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        client.Connect();
     }
 }
