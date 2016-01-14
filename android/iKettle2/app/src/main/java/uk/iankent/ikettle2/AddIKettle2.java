@@ -84,7 +84,7 @@ public class AddIKettle2 extends AppCompatActivity {
             }
         };
         kettlesFound.clear();
-        scanner.Start();
+        scanner.Start(getApplicationContext());
         progressScanning.setVisibility(View.VISIBLE);
         txtScanning.setVisibility(View.VISIBLE);
 
