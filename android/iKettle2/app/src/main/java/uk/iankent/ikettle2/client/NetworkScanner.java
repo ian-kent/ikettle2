@@ -62,7 +62,6 @@ public class NetworkScanner {
             @Override
             public void run() {
                 String subnet = getSubnet();
-                //String subnet = "192.168.100.0/24";
                 SubnetUtils utils = new SubnetUtils(subnet);
                 final String[] allIPs = utils.getInfo().getAllAddresses();
                 for(int i = 0; i < allIPs.length; i++) {
@@ -71,9 +70,19 @@ public class NetworkScanner {
                         @Override
                         public void run() {
                             IKettle2Client client = new IKettle2Client(ip);
-                            client.onConnected = new OnKettleResponse() {
+                            client.setKettleListener(new IKettle2Client.KettleListener() {
                                 @Override
-                                public void onKettleResponse(KettleResponse response) {
+                                public void onError(KettleError error) {
+                                    // Do nothing
+                                    scanned++;
+                                    if(scanned == allIPs.length && onScanFinished != null) {
+                                        onScanFinished.onKettleResponse(null);
+                                        isBusy = false;
+                                    }
+                                }
+
+                                @Override
+                                public void onConnected() {
                                     // FIXME request device info
                                     Log.d("AddIKettle2", "onKettleResponse: found device: " + ip);
                                     if(NetworkScanner.this.onKettleFound != null) {
@@ -86,18 +95,27 @@ public class NetworkScanner {
                                         isBusy = false;
                                     }
                                 }
-                            };
-                            client.onError = new OnKettleResponse<KettleError>() {
+
                                 @Override
-                                public void onKettleResponse(KettleError response) {
-                                    // Do nothing
-                                    scanned++;
-                                    if(scanned == allIPs.length && onScanFinished != null) {
-                                        onScanFinished.onKettleResponse(null);
-                                        isBusy = false;
-                                    }
+                                public void onDisconnected() {
+
                                 }
-                            };
+
+                                @Override
+                                public void onKettleStatus(KettleStatusResponse response) {
+
+                                }
+
+                                @Override
+                                public void onKettleCommandAck(KettleCommandAckResponse response) {
+
+                                }
+
+                                @Override
+                                public void onKettleAutoDacResponse(KettleAutoDacResponse response) {
+
+                                }
+                            });
                             client.Connect(perHostTimeout);
                         }
                     });
@@ -105,6 +123,7 @@ public class NetworkScanner {
             }
         }.run();
     }
+
 
     private String getSubnet() {
         WifiManager wifiMgr = (WifiManager) ctx.getSystemService(Context.WIFI_SERVICE);

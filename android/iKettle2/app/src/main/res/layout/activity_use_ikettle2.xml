@@ -46,6 +46,7 @@
                     android:textOn="Stop"
                     android:checked="false"
                     android:layout_below="@+id/txtTargetTemp"
+                    android:enabled="false"
                     android:layout_centerHorizontal="true" />
 
                 <EditText
@@ -55,7 +56,7 @@
                     android:ems="10"
                     android:id="@+id/txtTargetTemp"
                     android:text="100"
-                    android:numeric="integer"
+                    android:enabled="false"
                     android:textAlignment="center"
                     android:layout_marginTop="63dp"
                     android:textSize="40dp"
@@ -69,6 +70,7 @@
                     android:layout_gravity="center"
                     android:padding="10dp"
                     seekarc:rotation="0"
+                    seekarc:enabled="false"
                     seekarc:startAngle="55"
                     seekarc:sweepAngle="250"
                     seekarc:touchInside="true"

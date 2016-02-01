@@ -1,12 +1,17 @@
 package uk.iankent.ikettle2;
 
 import android.app.Activity;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.graphics.Color;
+import android.os.IBinder;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CompoundButton;
@@ -15,61 +20,86 @@ import android.widget.ToggleButton;
 
 import com.triggertrap.seekarc.SeekArc;
 
-import java.io.IOException;
-
 import uk.iankent.ikettle2.client.IKettle2Client;
+import uk.iankent.ikettle2.client.KettleAutoDacResponse;
 import uk.iankent.ikettle2.client.KettleCommandAckResponse;
 import uk.iankent.ikettle2.client.KettleError;
-import uk.iankent.ikettle2.client.KettleResponse;
 import uk.iankent.ikettle2.client.KettleStatusResponse;
-import uk.iankent.ikettle2.client.OnKettleResponse;
 import uk.iankent.ikettle2.data.Kettle;
+import uk.iankent.ikettle2.services.UseKettle2Service;
 
-public class UseIKettle2 extends AppCompatActivity {
+public class UseIKettle2 extends AppCompatActivity implements IKettle2Client.KettleListener {
 
     Kettle kettle;
-    IKettle2Client client;
+    KettleStatusResponse lastStatus = null;
+    UseKettle2Service.LocalBinder mBinder = null;
 
     protected int targetTemp = 0;
     protected ToggleButton btnStartStop;
     protected SeekArc mSeekArc;
 
+    private TextView txtTemp;
+    private TextView txtError;
+    private TextView txtStatus;
+    private TextView txtWaterlevel;
+    private TextView txtTargetTemp;
+
     protected boolean isBusy = false;
     protected CompoundButton.OnCheckedChangeListener btnStartStopCheckedChangeListener;
 
+    /** Defines callbacks for service binding, passed to bindService() */
+    private ServiceConnection mConnection = new ServiceConnection() {
+
+        @Override
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            // We've bound to LocalService, cast the IBinder and get LocalService instance
+            mBinder = (UseKettle2Service.LocalBinder) service;
+            mBinder.setKettleListener(UseIKettle2.this);
+            if(mBinder.getState() == UseKettle2Service.ServiceState.CONNECTED) {
+                txtError.setVisibility(View.GONE);
+                btnStartStop.setEnabled(true);
+                txtTargetTemp.setEnabled(true);
+                mSeekArc.setEnabled(true);
+                mSeekArc.setProgress(Integer.valueOf(txtTargetTemp.getText().toString()));
+            }
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName arg0) {
+            mBinder = null;
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        final Activity activity = this;
-
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_use_ikettle2);
 
-        Intent i = getIntent();
-        kettle = (Kettle) i.getParcelableExtra("kettle");
-        client = new IKettle2Client(kettle.Host, kettle.Port);
-
+        // Get all the ui elements we need
         final TextView txtName = (TextView)findViewById(R.id.txtName);
-        final TextView txtError = (TextView)findViewById(R.id.txtError);
-
-        final TextView txtTemp = (TextView)findViewById(R.id.txtTemp);
-        final TextView txtStatus = (TextView)findViewById(R.id.txtStatus);
-        final TextView txtWaterlevel = (TextView)findViewById(R.id.txtWaterlevel);
-
         final Button btnCalibrate = (Button)findViewById(R.id.btnCalibrate);
+        txtError = (TextView)findViewById(R.id.txtError);
+        txtTemp = (TextView)findViewById(R.id.txtTemp);
+        txtStatus = (TextView)findViewById(R.id.txtStatus);
+        txtWaterlevel = (TextView)findViewById(R.id.txtWaterlevel);
+        txtTargetTemp = (TextView)findViewById(R.id.txtTargetTemp);
+        btnStartStop = (ToggleButton)findViewById(R.id.btnStartStop);
+        mSeekArc = (SeekArc)findViewById(R.id.seekArc);
+
+        kettle = getIntent().getParcelableExtra("kettle");
+
+        txtName.setText(kettle.Name);
+        txtError.setVisibility(View.GONE);
+
         btnCalibrate.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                CalibrateIKettle.client = client;
-                CalibrateIKettle.kettle = kettle;
                 Intent i = new Intent(UseIKettle2.this, CalibrateIKettle.class);
+                i.putExtra("kettle", kettle);
                 startActivity(i);
             }
         });
 
-        final TextView txtTargetTemp = (TextView)findViewById(R.id.txtTargetTemp);
-        btnStartStop = (ToggleButton)findViewById(R.id.btnStartStop);
-
-        mSeekArc = (SeekArc)findViewById(R.id.seekArc);
         mSeekArc.setOnSeekArcChangeListener(new SeekArc.OnSeekArcChangeListener() {
             @Override
             public void onProgressChanged(SeekArc seekArc, int i, boolean b) {
@@ -126,166 +156,192 @@ public class UseIKettle2 extends AppCompatActivity {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 btnStartStop.setEnabled(false);
 
-                if (isChecked) {
+                if(isChecked) {
                     int temp = Integer.parseInt(txtTargetTemp.getText().toString(), 10);
                     isBusy = true;
-                    client.Start(temp);
+
+                    Intent startIntent = new Intent(UseIKettle2.this.getApplicationContext(), UseKettle2Service.class);
+                    startIntent.setAction(Constants.START_BOILING_ACTION);
+                    startIntent.putExtra("temp", temp);
+                    startService(startIntent);
                 } else {
                     isBusy = true;
-                    client.Stop();
+                    Intent startIntent = new Intent(UseIKettle2.this.getApplicationContext(), UseKettle2Service.class);
+                    startIntent.setAction(Constants.STOP_BOILING_ACTION);
+                    startService(startIntent);
                 }
 
                 updateUIStatus();
             }
         };
         btnStartStop.setOnCheckedChangeListener(btnStartStopCheckedChangeListener);
-
-        client.onError = new OnKettleResponse<KettleError>() {
-            @Override
-            public void onKettleResponse(final KettleError response) {
-                activity.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        txtError.setText(response.getException().getMessage());
-                        txtError.setVisibility(View.VISIBLE);
-                    }
-                });
-            }
-        };
-        client.onKettleStatus = new OnKettleResponse<KettleStatusResponse>() {
-            @Override
-            public void onKettleResponse(final KettleStatusResponse response) {
-                activity.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        switch(response.getStatus()) {
-                            case Ready:
-                                if(btnStartStop.isChecked()) {
-                                    btnStartStop.setEnabled(true);
-                                    btnStartStop.setChecked(false);
-                                }
-                                break;
-                        }
-                        if(response.getTemperature() == 127) {
-                            txtStatus.setText("Kettle off base");
-                            txtTemp.setText("?");
-                            txtWaterlevel.setText("Unknown");
-                        } else {
-                            int t = response.getTemperature();
-
-                            // make 40 degrees the cold setting
-                            int c;
-                            if(t < 40) {
-                                c = 0;
-                            } else {
-                                c = t - (t/100*40);
-                            }
-
-                            // FIXME mid-range colour (~70deg) is a horrible purple
-                            txtTemp.setText(((Integer)t).toString());// + (char) 0x00B0);
-                            int r = Color.rgb((255*c)/100, 0, (255*(100-c))/100);
-                            txtTemp.setTextColor(r);
-
-                            txtStatus.setText(response.getStatus().name());
-                            txtWaterlevel.setText(response.getWaterLevelStatus().name());
-                        }
-
-                        updateUIStatus();
-                    }
-                });
-            }
-        };
-        client.onKettleCommandAck = new OnKettleResponse<KettleCommandAckResponse>() {
-            @Override
-            public void onKettleResponse(KettleCommandAckResponse response) {
-                activity.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        btnStartStop.setEnabled(true);
-                        isBusy = false;
-                    }
-                });
-            }
-        };
-
-        txtName.setText(kettle.Name);
-        txtError.setVisibility(View.GONE);
-
-        client.onConnected = new OnKettleResponse() {
-            @Override
-            public void onKettleResponse(KettleResponse response) {
-                client.Process();
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        txtError.setVisibility(View.GONE);
-                        // TODO retry
-                    }
-                });
-            }
-        };
-        client.onDisconnected = new OnKettleResponse() {
-            @Override
-            public void onKettleResponse(KettleResponse response) {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        txtError.setVisibility(View.VISIBLE);
-                        txtError.setText("Disconnected");
-                        txtStatus.setText("Disconnected");
-                        // TODO retry
-                    }
-                });
-            }
-        };
     }
 
     protected void updateUIStatus() {
-        KettleStatusResponse s = client.getLastStatus();
-        if(targetTemp <= s.getTemperature()) {
-            btnStartStop.setEnabled(false);
-        } else {
-            btnStartStop.setEnabled(true);
-        }
+        if(lastStatus != null) {
+            if(targetTemp <= lastStatus.getTemperature()) {
+                btnStartStop.setEnabled(false);
+            } else {
+                btnStartStop.setEnabled(true);
+            }
 
-        btnStartStop.setOnCheckedChangeListener(null);
-        if (s.getStatus() == KettleStatusResponse.State.Boiling) {
-            btnStartStop.setChecked(true);
-        } else {
-            btnStartStop.setChecked(false);
-        }
-        btnStartStop.setOnCheckedChangeListener(btnStartStopCheckedChangeListener);
+            btnStartStop.setOnCheckedChangeListener(null);
+            if(lastStatus.getStatus() == KettleStatusResponse.State.Boiling) {
+                btnStartStop.setChecked(true);
+            } else {
+                btnStartStop.setChecked(false);
+            }
+            btnStartStop.setOnCheckedChangeListener(btnStartStopCheckedChangeListener);
 
-        if(isBusy || s.getStatus() == KettleStatusResponse.State.Boiling) {
-            mSeekArc.setEnabled(false);
-        } else {
-            mSeekArc.setEnabled(true);
+            if(isBusy || lastStatus.getStatus() == KettleStatusResponse.State.Boiling) {
+                mSeekArc.setEnabled(false);
+            } else {
+                mSeekArc.setEnabled(true);
+            }
         }
     }
 
     @Override
     public void onBackPressed() {
-        try {
-            client.Disconnect();
-        } catch (IOException e) {
-            // do nothing
+        if(mBinder != null) {
+            mBinder.removeKettleListener(UseIKettle2.this);
+            unbindService(mConnection);
+            lastStatus = null;
+            mBinder = null;
         }
+
+        Intent startIntent = new Intent(UseIKettle2.this.getApplicationContext(), UseKettle2Service.class);
+        startIntent.setAction(Constants.STOP_ACTION);
+        startService(startIntent);
+
         super.onBackPressed();
     }
 
     @Override
-    public void onPause() {
-        super.onPause();
-        try {
-            client.Disconnect();
-        } catch (IOException e) {
-            // do nothing
+    protected void onStart() {
+        super.onStart();
+        Log.d("useikettle2", "onStart");
+
+        Intent startIntent = new Intent(UseIKettle2.this.getApplicationContext(), UseKettle2Service.class);
+        startIntent.setAction(Constants.START_ACTION);
+        startIntent.putExtra("kettle", kettle);
+        bindService(startIntent, mConnection, Context.BIND_AUTO_CREATE);
+        startService(startIntent);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        Log.d("useikettle2", "onStop");
+        // Unbind from the service
+        if(mBinder != null) {
+            mBinder.removeKettleListener(UseIKettle2.this);
+            unbindService(mConnection);
+            lastStatus = null;
+            mBinder = null;
         }
     }
 
     @Override
-    public void onResume() {
-        super.onResume();
-        client.Connect();
+    public void onError(final KettleError error) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                txtError.setText(error.getException().getMessage());
+                txtError.setVisibility(View.VISIBLE);
+            }
+        });
+    }
+
+    @Override
+    public void onConnected() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Log.d("UseIKettle2", "onConnected");
+                txtError.setVisibility(View.GONE);
+                btnStartStop.setEnabled(true);
+                txtTargetTemp.setEnabled(true);
+                mSeekArc.setEnabled(true);
+                mSeekArc.setProgress(Integer.valueOf(txtTargetTemp.getText().toString()));
+
+            }
+        });
+    }
+
+    @Override
+    public void onDisconnected() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                txtError.setVisibility(View.VISIBLE);
+                txtError.setText("Disconnected");
+                txtStatus.setText("Disconnected");
+                btnStartStop.setEnabled(false);
+                mSeekArc.setEnabled(false);
+                txtTargetTemp.setEnabled(false);
+                // TODO retry
+            }
+        });
+    }
+
+    @Override
+    public void onKettleStatus(final KettleStatusResponse response) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                switch(response.getStatus()) {
+                    case Ready:
+                        if(btnStartStop.isChecked()) {
+                            btnStartStop.setEnabled(true);
+                            btnStartStop.setOnCheckedChangeListener(null);
+                            btnStartStop.setChecked(false);
+                            btnStartStop.setOnCheckedChangeListener(btnStartStopCheckedChangeListener);
+                        }
+                        break;
+                }
+                if(response.getTemperature() == 127) {
+                    txtStatus.setText("Kettle off base");
+                    txtTemp.setText("?");
+                    txtWaterlevel.setText("Unknown");
+                } else {
+                    int t = response.getTemperature();
+
+                    // make 40 degrees the cold setting
+                    int c;
+                    if(t < 40) {
+                        c = 0;
+                    } else {
+                        c = t - (t/100*40);
+                    }
+
+                    // FIXME mid-range colour (~70deg) is a horrible purple
+                    txtTemp.setText(((Integer)t).toString());// + (char) 0x00B0);
+                    int r = Color.rgb((255*c)/100, 0, (255*(100-c))/100);
+                    txtTemp.setTextColor(r);
+
+                    txtStatus.setText(response.getStatus().name());
+                    txtWaterlevel.setText(response.getWaterLevelStatus().name());
+                }
+                lastStatus = response;
+                updateUIStatus();
+            }
+        });
+    }
+
+    @Override
+    public void onKettleCommandAck(KettleCommandAckResponse response) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                btnStartStop.setEnabled(true);
+                isBusy = false;
+            }
+        });
+    }
+
+    @Override
+    public void onKettleAutoDacResponse(KettleAutoDacResponse response) {
+
     }
 }

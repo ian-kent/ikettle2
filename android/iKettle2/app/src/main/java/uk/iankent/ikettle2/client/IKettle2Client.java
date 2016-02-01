@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 /**
@@ -15,6 +16,17 @@ import java.util.Arrays;
  */
 
 public class IKettle2Client {
+
+    public interface KettleListener
+    {
+        void onError(KettleError error);
+        void onConnected();
+        void onDisconnected();
+        void onKettleStatus(KettleStatusResponse response);
+        void onKettleCommandAck(KettleCommandAckResponse response);
+        void onKettleAutoDacResponse(KettleAutoDacResponse response);
+    }
+
     static final byte autoDacKettle         = 44;
     static final byte autoDacKettleResponse = 45;
     static final byte endMessage            = 126;
@@ -44,14 +56,16 @@ public class IKettle2Client {
     protected Integer port;
 
     private Socket clientSocket;
-    public OnKettleResponse<KettleStatusResponse> onKettleStatus;
-    public OnKettleResponse<KettleCommandAckResponse> onKettleCommandAck;
     public OnKettleResponse<KettleWifiNetworksResponse> onKettleWifiNetworksResponse;
     public OnKettleResponse<KettleDeviceInfoResponse> onKettleDeviceInfoResponse;
-    public OnKettleResponse<KettleAutoDacResponse> onKettleAutoDacResponse;
-    public OnKettleResponse onConnected;
-    public OnKettleResponse onDisconnected;
-    public OnKettleResponse<KettleError> onError;
+
+    ArrayList<KettleListener> kettleListeners = new ArrayList();
+    public void setKettleListener(KettleListener list) {
+        kettleListeners.add(list);
+    }
+    public void removeKettleListener(KettleListener list) {
+        kettleListeners.remove(list);
+    }
 
     public boolean IsConnected() {
         return clientSocket != null && clientSocket.isConnected();
@@ -72,9 +86,8 @@ public class IKettle2Client {
 
     protected void handleError(KettleError e) {
         e.exception.printStackTrace();
-        if(this.onError != null) {
-            this.onError.onKettleResponse(e);
-        }
+        for(KettleListener list : kettleListeners)
+            list.onError(e);
     }
 
     public void Connect() {
@@ -91,9 +104,8 @@ public class IKettle2Client {
                     clientSocket.setTcpNoDelay(true);
                     clientSocket.setSoLinger(true, 0);
                     clientSocket.connect(new InetSocketAddress(IKettle2Client.this.host, IKettle2Client.this.port), timeout);
-                    if(IKettle2Client.this.onConnected != null) {
-                        IKettle2Client.this.onConnected.onKettleResponse(null);
-                    }
+                    for(KettleListener list : kettleListeners)
+                        list.onConnected();
                 } catch (IOException e) {
                     IKettle2Client.this.handleError(new KettleConnectError(e));
                 }
@@ -141,27 +153,26 @@ public class IKettle2Client {
                                 byte[] args = Arrays.copyOfRange(cmd, 1, cmd.length);
                                 out.reset();
 
-                                Log.d("IKettle", "Process: " + String.valueOf((int) cmd[0]));
-                                Log.d("IKettle", "Process: " + Arrays.toString(cmd));
+                                //Log.d("IKettle", "Process: " + String.valueOf((int) cmd[0]));
+                                //Log.d("IKettle", "Process: " + Arrays.toString(cmd));
 
                                 switch (cmd[0]) {
                                     case kettleStatus:
-                                        if (this$.onKettleStatus != null) {
-                                            KettleStatusResponse res = KettleStatusResponse.fromBytes(args);
-                                            this$.lastStatus = res;
-                                            if(autoDacPending) {
-                                                autoDacPending = false;
-                                                autoDacOffBaseWeight = res.getWaterLevel();
-                                                completeCalibrate();
-                                                break;
-                                            }
-                                            this$.onKettleStatus.onKettleResponse(res);
+
+                                        KettleStatusResponse res = KettleStatusResponse.fromBytes(args);
+                                        this$.lastStatus = res;
+                                        if(autoDacPending) {
+                                            autoDacPending = false;
+                                            autoDacOffBaseWeight = res.getWaterLevel();
+                                            completeCalibrate();
+                                            break;
                                         }
+                                        for(KettleListener list : kettleListeners)
+                                            list.onKettleStatus(res);
                                         break;
                                     case commandSentAck:
-                                        if (this$.onKettleCommandAck != null) {
-                                            this$.onKettleCommandAck.onKettleResponse(KettleCommandAckResponse.fromBytes(args));
-                                        }
+                                        for(KettleListener list : kettleListeners)
+                                            list.onKettleCommandAck(KettleCommandAckResponse.fromBytes(args));
                                         break;
                                     case wifiNetworkResponse:
                                         if (this$.onKettleWifiNetworksResponse != null) {
@@ -175,9 +186,8 @@ public class IKettle2Client {
                                         break;
                                     case autoDacKettleResponse:
                                         Log.d("IKettle2Client", "Process: got autoDacKettleResponse");
-                                        if (this$.onKettleAutoDacResponse != null) {
-                                            this$.onKettleAutoDacResponse.onKettleResponse(new KettleAutoDacResponse(autoDacOffBaseWeight));
-                                        }
+                                        for(KettleListener list : kettleListeners)
+                                            list.onKettleAutoDacResponse(new KettleAutoDacResponse(autoDacOffBaseWeight));
                                         break;
                                     default:
                                         // FIXME invalid command
@@ -192,9 +202,8 @@ public class IKettle2Client {
                     e.printStackTrace();
                 }
                 Log.d("IKettle2Client", "Process: socket no longer connected");
-                if(this$.onDisconnected != null) {
-                    this$.onDisconnected.onKettleResponse(null);
-                }
+                for(KettleListener list : kettleListeners)
+                    list.onDisconnected();
             }
         }.start();
     }
