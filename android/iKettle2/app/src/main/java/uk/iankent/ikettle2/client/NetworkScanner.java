@@ -47,11 +47,7 @@ public class NetworkScanner {
         mDiscoverWorkQueue.clear();
     }
 
-    public void Start(Context ctx) {
-        Start(ctx, 100);
-    }
-
-    public void Start(Context ctx, final int perHostTimeout) {
+    public void Start(Context ctx, final String subnetCIDR, final int perHostTimeout) {
         if(isBusy)return;
         isBusy = true;
         this.ctx = ctx;
@@ -61,8 +57,7 @@ public class NetworkScanner {
         new Thread(){
             @Override
             public void run() {
-                String subnet = getSubnet();
-                SubnetUtils utils = new SubnetUtils(subnet);
+                SubnetUtils utils = new SubnetUtils(subnetCIDR);
                 final String[] allIPs = utils.getInfo().getAllAddresses();
                 for(int i = 0; i < allIPs.length; i++) {
                     final String ip = allIPs[i];
@@ -124,8 +119,7 @@ public class NetworkScanner {
         }.run();
     }
 
-
-    private String getSubnet() {
+    public static String getSubnet(Context ctx) {
         WifiManager wifiMgr = (WifiManager) ctx.getSystemService(Context.WIFI_SERVICE);
         WifiInfo wifiInfo = wifiMgr.getConnectionInfo();
         int ip = wifiInfo.getIpAddress();

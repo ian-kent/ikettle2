@@ -1,6 +1,7 @@
 package uk.iankent.ikettle2;
 
 import android.app.Activity;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.media.tv.TvContract;
 import android.os.AsyncTask;
@@ -13,6 +14,8 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.GridLayout;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -20,6 +23,7 @@ import android.widget.TextView;
 import org.apache.commons.net.util.SubnetUtils;
 
 import java.io.IOException;
+import java.io.LineNumberReader;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -48,20 +52,60 @@ public class AddIKettle2 extends AppCompatActivity {
     protected ArrayList<Kettle> kettlesFound = new ArrayList<Kettle>();
     protected NetworkScanner scanner = new NetworkScanner();
 
+    protected View.OnClickListener startListener;
+    protected View.OnClickListener stopListener;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        final Activity activity = this;
-
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_ikettle2);
 
         final EditText txtHostIP = (EditText)findViewById(R.id.inputHostIP);
+        final TextView textStatus = (TextView)findViewById(R.id.textHostIP);
         final TextView textError = (TextView)findViewById(R.id.textError);
         final Button btnSave = (Button)findViewById(R.id.btnSave);
         final KettleAdapter adapter = new KettleAdapter(this, kettlesFound);
-        final TextView txtScanning = (TextView)findViewById(R.id.txtScanning);
-
+        final Button btnStop = (Button)findViewById(R.id.btnStop);
+        final Button btnAdvanced = (Button)findViewById(R.id.btnAdvanced);
         final ProgressBar progressScanning = (ProgressBar)findViewById(R.id.progressScanning);
+        final ListView listDevices = (ListView)findViewById(R.id.listViewDevices);
+        final GridLayout layoutAdvanced = (GridLayout)findViewById(R.id.layoutAdvanced);
+        final EditText txtTimeout = (EditText)findViewById(R.id.inputTimeout);
+        final EditText txtCIDR = (EditText)findViewById(R.id.inputCIDR);
+
+        txtTimeout.setText("250");
+        txtCIDR.setText(NetworkScanner.getSubnet(this));
+
+        stopListener = new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                scanner.Stop();
+                btnStop.setEnabled(false);
+            }
+        };
+        startListener = new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                kettlesFound.clear();
+                adapter.notifyDataSetChanged();
+                scanner.Start(getApplicationContext(), txtCIDR.getText().toString(), Integer.valueOf(txtTimeout.getText().toString()));
+                progressScanning.setVisibility(View.VISIBLE);
+                btnStop.setText("Stop");
+                btnStop.setOnClickListener(stopListener);
+                textStatus.setText("Scanning for your iKettle 2.0, please wait...");
+            }
+        };
+
+        btnStop.setOnClickListener(stopListener);
+
+        btnAdvanced.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                btnAdvanced.setVisibility(View.GONE);
+                layoutAdvanced.setVisibility(View.VISIBLE);
+            }
+        });
+
         scanner.onKettleFound = new OnKettleResponse<KettleDeviceInfoResponse>() {
             @Override
             public void onKettleResponse(KettleDeviceInfoResponse response) {
@@ -69,6 +113,7 @@ public class AddIKettle2 extends AppCompatActivity {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
+                        listDevices.setVisibility(View.VISIBLE);
                         adapter.notifyDataSetChanged();
                     }
                 });
@@ -80,16 +125,25 @@ public class AddIKettle2 extends AppCompatActivity {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        progressScanning.setVisibility(View.INVISIBLE);
-                        txtScanning.setVisibility(View.INVISIBLE);
+                        progressScanning.setVisibility(View.GONE);
+                        if(kettlesFound.size() == 0) {
+                            textStatus.setText("Finished scanning, no kettles found");
+                            listDevices.setVisibility(View.INVISIBLE);
+                        } else if(kettlesFound.size() == 1) {
+                            textStatus.setText("Finished scanning, found 1 kettle");
+                        } else {
+                            textStatus.setText("Finished scanning, found " + String.valueOf(kettlesFound.size()) + " kettles");
+                        }
+                        btnStop.setText("Try again");
+                        btnStop.setEnabled(true);
+                        btnStop.setOnClickListener(startListener);
                     }
                 });
             }
         };
+
         kettlesFound.clear();
-        scanner.Start(getApplicationContext());
-        progressScanning.setVisibility(View.VISIBLE);
-        txtScanning.setVisibility(View.VISIBLE);
+        scanner.Start(getApplicationContext(), txtCIDR.getText().toString(), Integer.valueOf(txtTimeout.getText().toString()));
 
         ListView lv = (ListView)findViewById(R.id.listViewDevices);
         lv.setAdapter(adapter);
@@ -101,7 +155,7 @@ public class AddIKettle2 extends AppCompatActivity {
             }
         });
 
-        btnSave.setEnabled(false);
+        btnSave.setVisibility(View.GONE);
 
         txtHostIP.addTextChangedListener(new TextWatcher() {
             @Override
@@ -112,9 +166,9 @@ public class AddIKettle2 extends AppCompatActivity {
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 if (s.length() > 0) {
-                    btnSave.setEnabled(true);
+                    btnSave.setVisibility(View.VISIBLE);
                 } else {
-                    btnSave.setEnabled(false);
+                    btnSave.setVisibility(View.GONE);
                 }
             }
 
@@ -128,10 +182,11 @@ public class AddIKettle2 extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 btnSave.setEnabled(false);
+                btnStop.setEnabled(false);
                 textError.setVisibility(View.GONE);
                 scanner.Stop();
                 progressScanning.setVisibility(View.VISIBLE);
-                txtScanning.setText("Saving");
+                textStatus.setText("Adding your iKettle 2.0, please wait...");
                 final IKettle2Client kettleClient = new IKettle2Client(txtHostIP.getText().toString());
                 kettleClient.setKettleListener(new IKettle2Client.KettleListener() {
                     @Override
@@ -142,6 +197,7 @@ public class AddIKettle2 extends AppCompatActivity {
                                 textError.setText(error.getException().getMessage());
                                 textError.setVisibility(View.VISIBLE);
                                 btnSave.setEnabled(true);
+                                btnStop.setEnabled(true);
                             }
                         });
                     }
@@ -184,7 +240,7 @@ public class AddIKettle2 extends AppCompatActivity {
 
                     @Override
                     public void onKettleAutoDacResponse(KettleAutoDacResponse response) {
-
+                        
                     }
                 });
 
