@@ -51,7 +51,7 @@ const (
 func main() {
 	// create new shell.
 	// by default, new shell includes 'exit', 'help' and 'clear' commands.
-	shell := ishell.NewShell()
+	shell := ishell.New()
 
 	// display welcome info.
 	shell.Println("iKettle 2.0 shell")
@@ -383,7 +383,7 @@ func main() {
 		ssid := shell.ReadLine()
 
 		shell.Print("Enter network password:")
-		passwd := shell.ReadPassword(true)
+		passwd := shell.ReadPassword()
 
 		bSsid := []byte{configureWifiSSID}
 		bSsid = append(bSsid, []byte(ssid)...)
