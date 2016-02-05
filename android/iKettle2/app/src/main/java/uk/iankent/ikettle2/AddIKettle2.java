@@ -35,9 +35,12 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import uk.iankent.ikettle2.client.IKettle2Client;
+import uk.iankent.ikettle2.client.KettleAutoDacResponse;
+import uk.iankent.ikettle2.client.KettleCommandAckResponse;
 import uk.iankent.ikettle2.client.KettleDeviceInfoResponse;
 import uk.iankent.ikettle2.client.KettleError;
 import uk.iankent.ikettle2.client.KettleResponse;
+import uk.iankent.ikettle2.client.KettleStatusResponse;
 import uk.iankent.ikettle2.client.NetworkScanner;
 import uk.iankent.ikettle2.client.OnKettleResponse;
 import uk.iankent.ikettle2.data.Kettle;
@@ -185,9 +188,22 @@ public class AddIKettle2 extends AppCompatActivity {
                 progressScanning.setVisibility(View.VISIBLE);
                 textStatus.setText("Adding your iKettle 2.0, please wait...");
                 final IKettle2Client kettleClient = new IKettle2Client(txtHostIP.getText().toString());
-                kettleClient.onConnected = new OnKettleResponse() {
+                kettleClient.setKettleListener(new IKettle2Client.KettleListener() {
                     @Override
-                    public void onKettleResponse(KettleResponse response) {
+                    public void onError(final KettleError error) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                textError.setText(error.getException().getMessage());
+                                textError.setVisibility(View.VISIBLE);
+                                btnSave.setEnabled(true);
+                                btnStop.setEnabled(true);
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void onConnected() {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
@@ -206,21 +222,28 @@ public class AddIKettle2 extends AppCompatActivity {
                             }
                         });
                     }
-                };
-                kettleClient.onError = new OnKettleResponse<KettleError>() {
+
                     @Override
-                    public void onKettleResponse(final KettleError response) {
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                textError.setText(response.getException().getMessage());
-                                textError.setVisibility(View.VISIBLE);
-                                btnSave.setEnabled(true);
-                                btnStop.setEnabled(true);
-                            }
-                        });
+                    public void onDisconnected() {
+
                     }
-                };
+
+                    @Override
+                    public void onKettleStatus(KettleStatusResponse response) {
+
+                    }
+
+                    @Override
+                    public void onKettleCommandAck(KettleCommandAckResponse response) {
+
+                    }
+
+                    @Override
+                    public void onKettleAutoDacResponse(KettleAutoDacResponse response) {
+                        
+                    }
+                });
+
                 kettleClient.Connect();
             }
         });

@@ -20,9 +20,11 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import uk.iankent.ikettle2.client.IKettle2Client;
+import uk.iankent.ikettle2.client.KettleAutoDacResponse;
 import uk.iankent.ikettle2.client.KettleCommandAckResponse;
 import uk.iankent.ikettle2.client.KettleError;
 import uk.iankent.ikettle2.client.KettleResponse;
+import uk.iankent.ikettle2.client.KettleStatusResponse;
 import uk.iankent.ikettle2.client.KettleWifiNetworksResponse;
 import uk.iankent.ikettle2.client.OnKettleResponse;
 
@@ -78,9 +80,28 @@ public class ConfigureIKettle2 extends AppCompatActivity {
             }
         });
 
-        kettleClient.onConnected = new OnKettleResponse() {
+        kettleClient.setKettleListener(new IKettle2Client.KettleListener() {
             @Override
-            public void onKettleResponse(KettleResponse response) {
+            public void onError(final KettleError error) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        btnNext.setText("Try again");
+                        btnNext.setVisibility(View.VISIBLE);
+                        progressBar.setVisibility(View.GONE);
+                        txtError.setVisibility(View.VISIBLE);
+                        if (error.getException() != null) {
+                            txtError.setText(error.getException().getMessage());
+                            error.getException().printStackTrace();
+                        } else {
+                            txtError.setText("Unknown error");
+                        }
+                    }
+                });
+            }
+
+            @Override
+            public void onConnected() {
                 kettleClient.Process();
                 kettleClient.GetWifiConnections();
                 activity.runOnUiThread(new Runnable() {
@@ -91,7 +112,40 @@ public class ConfigureIKettle2 extends AppCompatActivity {
                     }
                 });
             }
-        };
+
+            @Override
+            public void onDisconnected() {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        txtInstructions.setText("Kettle wifi configuration complete!");
+                        btnNext.setText("Finish");
+                        btnNext.setEnabled(true);
+                        btnNext.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                activity.finish();
+                            }
+                        });
+                    }
+                });
+            }
+
+            @Override
+            public void onKettleStatus(KettleStatusResponse response) {
+
+            }
+
+            @Override
+            public void onKettleCommandAck(KettleCommandAckResponse response) {
+
+            }
+
+            @Override
+            public void onKettleAutoDacResponse(KettleAutoDacResponse response) {
+
+            }
+        });
 
         kettleClient.onKettleWifiNetworksResponse = new OnKettleResponse<KettleWifiNetworksResponse>() {
             @Override
@@ -108,22 +162,6 @@ public class ConfigureIKettle2 extends AppCompatActivity {
                         txtInstructions.setText("Select a wifi network");
                     }
                 });
-            }
-        };
-
-        kettleClient.onError = new OnKettleResponse<KettleError>() {
-            @Override
-            public void onKettleResponse(KettleError response) {
-                btnNext.setText("Try again");
-                btnNext.setVisibility(View.VISIBLE);
-                progressBar.setVisibility(View.GONE);
-                txtError.setVisibility(View.VISIBLE);
-                if(response.getException() != null) {
-                    txtError.setText(response.getException().getMessage());
-                    response.getException().printStackTrace();
-                } else {
-                    txtError.setText("Unknown error");
-                }
             }
         };
 
@@ -147,26 +185,6 @@ public class ConfigureIKettle2 extends AppCompatActivity {
                                 // FIXME commands get no ack, or kettle doesn't save wifi settings.
                                 // FIXME but works fine from the Go client, so maybe an Android problem?
                                 txtInstructions.setText("Saving wifi settings, please wait... If this takes a long time, go back and try again (maybe 3 times!)");
-
-                                kettleClient.onDisconnected = new OnKettleResponse() {
-                                    @Override
-                                    public void onKettleResponse(KettleResponse response) {
-                                        activity.runOnUiThread(new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                txtInstructions.setText("Kettle wifi configuration complete!");
-                                                btnNext.setText("Finish");
-                                                btnNext.setEnabled(true);
-                                                btnNext.setOnClickListener(new View.OnClickListener() {
-                                                    @Override
-                                                    public void onClick(View v) {
-                                                        activity.finish();
-                                                    }
-                                                });
-                                            }
-                                        });
-                                    }
-                                };
 
                                 txtError.setVisibility(View.GONE);
                                 setWifiSSID.run();

@@ -47,10 +47,6 @@ public class NetworkScanner {
         mDiscoverWorkQueue.clear();
     }
 
-    public void Start(Context ctx) {
-        Start(ctx, getSubnet(ctx), 250);
-    }
-
     public void Start(Context ctx, final String subnetCIDR, final int perHostTimeout) {
         if(isBusy)return;
         isBusy = true;
@@ -69,9 +65,19 @@ public class NetworkScanner {
                         @Override
                         public void run() {
                             IKettle2Client client = new IKettle2Client(ip);
-                            client.onConnected = new OnKettleResponse() {
+                            client.setKettleListener(new IKettle2Client.KettleListener() {
                                 @Override
-                                public void onKettleResponse(KettleResponse response) {
+                                public void onError(KettleError error) {
+                                    // Do nothing
+                                    scanned++;
+                                    if(scanned == allIPs.length && onScanFinished != null) {
+                                        onScanFinished.onKettleResponse(null);
+                                        isBusy = false;
+                                    }
+                                }
+
+                                @Override
+                                public void onConnected() {
                                     // FIXME request device info
                                     Log.d("AddIKettle2", "onKettleResponse: found device: " + ip);
                                     if(NetworkScanner.this.onKettleFound != null) {
@@ -84,18 +90,27 @@ public class NetworkScanner {
                                         isBusy = false;
                                     }
                                 }
-                            };
-                            client.onError = new OnKettleResponse<KettleError>() {
+
                                 @Override
-                                public void onKettleResponse(KettleError response) {
-                                    // Do nothing
-                                    scanned++;
-                                    if(scanned == allIPs.length && onScanFinished != null) {
-                                        onScanFinished.onKettleResponse(null);
-                                        isBusy = false;
-                                    }
+                                public void onDisconnected() {
+
                                 }
-                            };
+
+                                @Override
+                                public void onKettleStatus(KettleStatusResponse response) {
+
+                                }
+
+                                @Override
+                                public void onKettleCommandAck(KettleCommandAckResponse response) {
+
+                                }
+
+                                @Override
+                                public void onKettleAutoDacResponse(KettleAutoDacResponse response) {
+
+                                }
+                            });
                             client.Connect(perHostTimeout);
                         }
                     });
